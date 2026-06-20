@@ -1,0 +1,16 @@
+# 비밀 — 절대 커밋 금지
+.env
+
+# 받은 PDF (저작권 + 용량). 폴더는 유지하고 내용만 제외
+papers/*
+!papers/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db

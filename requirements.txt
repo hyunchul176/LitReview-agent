@@ -1,0 +1,4 @@
+# 최소 의존성 (골격). 스크립트를 구현하며 필요 시 추가.
+requests>=2.31
+python-dotenv>=1.0
+playwright>=1.40

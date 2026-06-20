@@ -1,0 +1,9 @@
+# 줄바꿈 정규화 — 저장소에는 LF로 통일 (Windows/Mac/Linux 혼용 안전)
+* text=auto eol=lf
+
+# 바이너리 (정규화 제외)
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
