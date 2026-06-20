@@ -19,7 +19,7 @@ tools: Read, Write, Bash
    - 결과
    - 한계
    - **본 연구와의 관계** (우리 아이디어에 주는 시사점 — 가장 중요)
-3. `research/`에 정독 카드(HTML)로 쓴다. 형식은 일관되게 유지한다.
+3. 추출한 6파트를 JSON으로 만들고(스키마는 `scripts/make_card.py` 상단 참고), `python scripts/make_card.py --input <json경로>` 로 정독 카드(HTML)를 `research/`에 생성한다. 카드 형식은 스크립트가 고정하므로 모든 카드가 같은 모양이 된다.
 
 ## 원칙
 - **한 번에 한 편만.** 여러 편을 한꺼번에 읽지 않는다 (맥락 격리가 이 역할의 존재 이유).
