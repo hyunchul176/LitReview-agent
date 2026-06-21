@@ -1,21 +1,30 @@
-"""정독 카드(HTML) 생성.
+"""리뷰 카드(HTML) 생성 — 고도화 버전.
 
-정독가(reader)가 추출한 6파트 내용(JSON)을 일관된 HTML 카드로 만들어 research/ 에 저장한다.
-형식을 스크립트가 고정하므로, 누가 어떤 논문을 정독해도 카드 모양이 같다.
+정독가(reader)가 추출한 내용(JSON)을 research/assets/card.css·card.js 를 쓰는 일관된 카드로 만든다.
+figure(클릭 확대), 본문 하이라이트(.mark), 영어 인용(.qt), 그림 상호참조(.figref), 다크모드를 지원한다.
 
 JSON 스키마 (대부분 생략 가능):
 {
-  "title": "...", "authors": ["..."], "year": "2017", "venue": "ICLR (arXiv)",
+  "title": "...", "authors": ["..."], "year": 2018, "venue": "ICLR",
   "doi": "", "arxiv_id": "1707.01926", "url": "https://...",
-  "tags": ["..."], "highlights": ["핵심 한 문장", ...],
-  "background": "...",      # 연구 배경
-  "contribution": "...",    # 무엇을 했나
-  "method": "...",          # 방법론 상세
-  "results": "...",         # 결과
-  "limitations": "...",     # 한계
-  "relation": "..."         # 본 연구와의 관계 (가장 중요, 빨강 강조)
+  "tags": ["traffic forecasting", "GNN"], "role": "기반 문헌",
+  "citation": "F. Author et al. <b>Venue (2018)</b>. doi:...",   // 생략 시 위 필드로 자동 생성
+  "tldr": "한눈에 ... <span class='mark'>핵심</span> ...",
+  "figures": [
+    {"id": "fig1", "src": "images/dcrnn_fig1.png", "label": "Fig 1 · ICC",
+     "caption": "캡션(HTML 가능). (클릭 시 확대)", "alt": "스크린리더용 설명"}
+  ],
+  "attrs": [ {"label": "접근", "value": "인스턴스=문항 ..."} ],
+  "background": "...", "contribution": "...", "method": "...|[목록]",
+  "results": "...", "limitations": "...", "relation": "본 연구와의 관계 ..."
 }
-각 섹션 값은 문자열(빈 줄로 문단 구분) 또는 문자열 리스트(불릿)로 줄 수 있다.
+
+본문(tldr/각 섹션/relation/attr value/figure caption/citation)에는 신뢰된 작성자가 만든 HTML 조각을 그대로 넣을 수 있다(이스케이프하지 않음):
+  - 하이라이트:  <span class="mark">핵심 문장</span>
+  - 영어 인용:   <span class="qt">"verbatim quote"</span> <span class="qt-loc">(§4 본문)</span>   (qt-loc은 qt의 형제 span, 중첩 아님)
+  - 그림 참조:   <a class="figref" href="#fig1">Fig. 1</a>   (href는 반드시 "#" + figures의 id 값)
+  - 강조/이탤릭: <b>..</b> <i>..</i>
+title/authors/tags/figure label·alt 는 자동 이스케이프된다.
 
 사용 예:
   python scripts/make_card.py --input card.json
@@ -34,66 +43,33 @@ from pathlib import Path
 from _common import ROOT
 
 RESEARCH_DIR = ROOT / "research"
-
-SECTIONS = [
+SECTIONS_MAIN = [
     ("background", "연구 배경"),
     ("contribution", "무엇을 했나"),
     ("method", "방법론 상세"),
     ("results", "결과"),
     ("limitations", "한계"),
-    ("relation", "본 연구와의 관계"),
 ]
 
-TEMPLATE = """<!DOCTYPE html>
+DOC = """<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>__TITLE__</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
-<style>
-  :root{--navy-900:#0c1f3d;--navy-700:#1d3a5f;--navy-600:#2f5a8a;--navy-800:#13294b;--ink:#17202d;--muted:#5d6878;--line:#e3e9f2;--red:#d12f3c;--red-050:#fdeef0;--font:"Pretendard Variable",Pretendard,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;}
-  *{box-sizing:border-box;}
-  body{margin:0;background:#f4f7fc;color:var(--ink);font-family:var(--font);line-height:1.72;font-size:16px;-webkit-font-smoothing:antialiased;}
-  .card{max-width:820px;margin:32px auto;background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;box-shadow:0 16px 40px -28px rgba(12,31,61,.5);}
-  .head{background:linear-gradient(135deg,var(--navy-900),var(--navy-700));color:#fff;padding:30px 34px;}
-  .head h1{margin:0 0 10px;font-size:23px;line-height:1.32;font-weight:800;letter-spacing:-.01em;}
-  .meta{font-size:13.5px;color:#c4d2e6;line-height:1.65;}
-  .meta a{color:#9ecbff;text-decoration:none;}
-  .tags{margin-top:13px;display:flex;flex-wrap:wrap;gap:6px;}
-  .tag{font-size:11.5px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);color:#dde7f5;padding:3px 10px;border-radius:999px;}
-  .body{padding:8px 34px 30px;}
-  .hl{background:var(--red-050);border:1px solid #f3c9cd;border-radius:11px;padding:14px 18px;margin:22px 0 6px;}
-  .hl .lbl{font-size:11px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:#a81b27;margin-bottom:7px;}
-  .hl ul{margin:0;padding-left:18px;}
-  .hl li{margin-bottom:5px;font-size:14.5px;color:#5c2a30;}
-  section{margin-top:24px;}
-  h2{font-size:16px;color:var(--navy-800);font-weight:750;margin:0 0 8px;display:flex;align-items:center;gap:9px;}
-  h2::before{content:"";width:4px;height:16px;background:var(--navy-600);border-radius:3px;}
-  section.relation{background:#fbfcfe;border:1px solid var(--line);border-left:4px solid var(--red);border-radius:11px;padding:16px 20px 6px;margin-top:28px;}
-  section.relation h2{color:var(--red);}
-  section.relation h2::before{display:none;}
-  p{margin:0 0 10px;}
-  ul{margin:0 0 10px;padding-left:20px;}
-  li{margin-bottom:5px;}
-  .empty{color:var(--muted);font-style:italic;}
-  footer{padding:16px 34px 24px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;}
-</style>
+<link rel="stylesheet" href="assets/card.css">
+<script>(function(){try{var t=localStorage.getItem('theme')||((window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 </head>
 <body>
-<article class="card">
-  <div class="head">
-    <h1>__TITLE__</h1>
-    <div class="meta">__META__</div>
-    __TAGS__
-  </div>
-  <div class="body">
-    __HIGHLIGHTS__
-    __SECTIONS__
-  </div>
-  <footer>정독 카드 · 연구 아이디어 &amp; 문헌조사 에이전트</footer>
-</article>
+<div class="review-wrap">
+  <div class="topbar"><button class="theme-toggle" type="button">☾ 다크 모드</button></div>
+  <article class="paper" id="__SLUG__">
+    __ARTICLE__
+  </article>
+  <footer>리뷰 카드 · 연구 아이디어 &amp; 문헌조사 에이전트</footer>
+</div>
+<div class="lightbox" id="lightbox"><span class="lightbox-close">×</span><img alt=""><div class="lightbox-cap"></div></div>
+<script src="assets/card.js"></script>
 </body>
 </html>
 """
@@ -103,58 +79,115 @@ def esc(s) -> str:
     return html.escape(str(s), quote=True)
 
 
-def render_content(val) -> str:
+def strip_tags(s) -> str:
+    return re.sub(r"<[^>]+>", "", str(s or ""))
+
+
+def render_prose(val) -> str:
+    """raw HTML 통과 (신뢰된 작성자). 리스트면 <ul>, 문자열이면 빈 줄로 문단 분리."""
     if not val:
         return '<p class="empty">(내용 없음)</p>'
     if isinstance(val, list):
-        items = "".join(f"<li>{esc(x)}</li>" for x in val if str(x).strip())
+        items = "".join(f"<li>{x}</li>" for x in val if str(x).strip())
         return f"<ul>{items}</ul>" if items else '<p class="empty">(내용 없음)</p>'
     paras = re.split(r"\n\s*\n", str(val).strip())
-    rendered = "".join(f"<p>{esc(p.strip())}</p>" for p in paras if p.strip())
-    return rendered or '<p class="empty">(내용 없음)</p>'
+    return "".join(f"<p>{p.strip()}</p>" for p in paras if p.strip()) or '<p class="empty">(내용 없음)</p>'
 
 
-def render_meta(d) -> str:
-    parts = []
+def build_citation(d) -> str:
+    bits = []
     authors = d.get("authors") or []
     if authors:
-        parts.append(esc(", ".join(authors[:6]) + (" 외" if len(authors) > 6 else "")))
-    yv = " · ".join(x for x in [str(d.get("year") or "").strip(), str(d.get("venue") or "").strip()] if x)
-    if yv:
-        parts.append(esc(yv))
+        bits.append(esc(", ".join(authors)))
+    vy = " ".join(x for x in [esc(d.get("venue") or ""), str(d.get("year") or "").strip()] if x).strip()
+    if vy:
+        bits.append(vy)
     links = []
     if d.get("doi"):
-        links.append(f'<a href="https://doi.org/{esc(d["doi"])}">DOI: {esc(d["doi"])}</a>')
+        links.append(f'doi:<a href="https://doi.org/{esc(d["doi"])}">{esc(d["doi"])}</a>')
     if d.get("arxiv_id"):
-        links.append(f'<a href="https://arxiv.org/abs/{esc(d["arxiv_id"])}">arXiv: {esc(d["arxiv_id"])}</a>')
-    if d.get("url"):
-        links.append(f'<a href="{esc(d["url"])}">원문 링크</a>')
+        links.append(f'<a href="https://arxiv.org/abs/{esc(d["arxiv_id"])}">arXiv:{esc(d["arxiv_id"])}</a>')
+    if d.get("url") and not links:
+        links.append(f'<a href="{esc(d["url"])}">원문</a>')
     if links:
-        parts.append(" · ".join(links))
-    return "<br>".join(parts) or "(서지정보 없음)"
+        bits.append(" · ".join(links))
+    return ". ".join(bits)
 
 
-def render_tags(d) -> str:
-    tags = [t for t in (d.get("tags") or []) if str(t).strip()]
-    if not tags:
+def tag_row(d) -> str:
+    tags = []
+    if d.get("venue"):
+        tags.append(f'<span class="tag tag-venue">{esc(d["venue"])}</span>')
+    if d.get("year"):
+        tags.append(f'<span class="tag">{esc(str(d["year"]))}</span>')
+    for t in (d.get("tags") or []):
+        if str(t).strip():
+            tags.append(f'<span class="tag">{esc(t)}</span>')
+    return f'<div class="tag-row">{"".join(tags)}</div>' if tags else ""
+
+
+def figures_block(d) -> str:
+    figs = d.get("figures") or []
+    if not figs:
         return ""
-    return '<div class="tags">' + "".join(f'<span class="tag">{esc(t)}</span>' for t in tags) + "</div>"
+    items = []
+    for i, f in enumerate(figs):
+        fid = esc(f.get("id") or f"fig{i + 1}")
+        src = esc(f.get("src") or "")
+        label = esc(f.get("label") or f"Fig {i + 1}")
+        cap = f.get("caption") or ""
+        alt = esc(f.get("alt") or strip_tags(cap))
+        items.append(
+            f'<figure class="paper-figure anchor-fig" id="{fid}">'
+            f'<div class="fig-label">{label}</div>'
+            f'<img src="{src}" alt="{alt}">'
+            f'<div class="paper-figure-caption">{cap}</div></figure>'
+        )
+    return '<div class="paper-figs">' + "".join(items) + "</div>"
 
 
-def render_highlights(d) -> str:
-    hs = [h for h in (d.get("highlights") or []) if str(h).strip()]
-    if not hs:
+def attrs_block(d) -> str:
+    attrs = d.get("attrs") or []
+    if not attrs:
         return ""
-    items = "".join(f"<li>{esc(h)}</li>" for h in hs)
-    return f'<div class="hl"><div class="lbl">핵심</div><ul>{items}</ul></div>'
+    cells = []
+    for a in attrs:
+        cells.append(
+            f'<div class="attr"><div class="attr-label">{esc(a.get("label") or "")}</div>'
+            f'<div class="attr-value">{a.get("value") or ""}</div></div>'
+        )
+    return '<div class="attrs">' + "".join(cells) + "</div>"
 
 
-def render_sections(d) -> str:
+def sections_block(d) -> str:
     out = []
-    for key, label in SECTIONS:
-        cls = "relation" if key == "relation" else ""
-        out.append(f'<section class="{cls}"><h2>{esc(label)}</h2>{render_content(d.get(key))}</section>')
+    for key, label in SECTIONS_MAIN:
+        out.append(f'<div class="paper-section"><div class="paper-section-label">{label}</div>{render_prose(d.get(key))}</div>')
+    out.append(f'<div class="paper-section relevance"><div class="paper-section-label">본 연구와의 관계</div>{render_prose(d.get("relation"))}</div>')
     return "\n    ".join(out)
+
+
+def build_article(d) -> str:
+    parts = []
+    tr = tag_row(d)
+    if tr:
+        parts.append(tr)
+    parts.append(f"<h1>{esc(d.get('title') or '(제목 없음)')}</h1>")
+    cit = d.get("citation") or build_citation(d)
+    if cit:
+        parts.append(f'<div class="citation">{cit}</div>')
+    if d.get("role"):
+        parts.append(f'<div class="p-role">{esc(d["role"])}</div>')
+    if d.get("tldr"):
+        parts.append(f'<div class="tldr"><span class="tldr-label">한눈에</span>{d["tldr"]}</div>')
+    figs = figures_block(d)
+    if figs:
+        parts.append(figs)
+    at = attrs_block(d)
+    if at:
+        parts.append(at)
+    parts.append(sections_block(d))
+    return "\n    ".join(parts)
 
 
 def slugify(d) -> str:
@@ -164,7 +197,7 @@ def slugify(d) -> str:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="정독 카드(HTML) 생성")
+    ap = argparse.ArgumentParser(description="리뷰 카드(HTML) 생성")
     ap.add_argument("--input", help="JSON 경로 (없으면 stdin)")
     ap.add_argument("--out", help="출력 HTML 경로 (기본: research/<slug>.html)")
     args = ap.parse_args()
@@ -176,20 +209,32 @@ def main():
         print(f"[오류] JSON 파싱 실패: {e}", file=sys.stderr)
         sys.exit(1)
 
-    if not d.get("title"):
-        print("[!] title 이 없습니다 — '(제목 없음)'으로 생성합니다.", file=sys.stderr)
-
-    out_html = (TEMPLATE
+    out_html = (DOC
                 .replace("__TITLE__", esc(d.get("title") or "(제목 없음)"))
-                .replace("__META__", render_meta(d))
-                .replace("__TAGS__", render_tags(d))
-                .replace("__HIGHLIGHTS__", render_highlights(d))
-                .replace("__SECTIONS__", render_sections(d)))
+                .replace("__SLUG__", slugify(d))
+                .replace("__ARTICLE__", build_article(d)))
 
     out = Path(args.out) if args.out else RESEARCH_DIR / f"{slugify(d)}.html"
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(out_html, encoding="utf-8")
-    print(f"정독 카드 생성: {out}")
+
+    # 간단 검수(lint): 깨진 figref / 그림 파일 존재 / 본문 인용 유무
+    fig_ids = {(f.get("id") or f"fig{i + 1}") for i, f in enumerate(d.get("figures") or [])}
+    warns = []
+    for tag in re.findall(r'<a\b[^>]*class="figref"[^>]*>', out_html):
+        ref = re.search(r'href="#?([^"]+)"', tag)
+        if ref and ref.group(1).lstrip("#") not in fig_ids:
+            warns.append("figref '#%s' 에 맞는 figure id 없음" % ref.group(1))
+    for f in d.get("figures") or []:
+        src = f.get("src") or ""
+        if src and not src.startswith("http") and not (out.parent / src).exists():
+            warns.append("그림 파일 없음: " + src)
+    if out_html.count('class="qt"') == 0:
+        warns.append("본문 인용(.qt) 없음 — 핵심 문장 1개 권장")
+
+    print(f"리뷰 카드 생성: {out}")
+    for w in warns:
+        print("  · [검수] " + w)
 
 
 if __name__ == "__main__":

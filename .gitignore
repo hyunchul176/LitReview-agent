@@ -8,6 +8,11 @@
 papers/*
 !papers/.gitkeep
 
+# 생성된 리뷰 카드·대시보드·그림 (각자 로컬 결과물; 팀과 공유하려면 아래 줄을 지우세요)
+research/*.html
+research/images/*
+!research/images/.gitkeep
+
 # python
 __pycache__/
 *.py[cod]
