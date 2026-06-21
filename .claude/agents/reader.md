@@ -24,7 +24,7 @@ tools: Read, Write, Bash
 ## 카드 작성 규칙
 - **핵심 문장 하이라이트**: 중요한 한두 문장은 `<span class="mark">...</span>` 로 감싼다.
 - **영어 원문 인용**: 본문에서 확인한 핵심 주장은 `<span class="qt">"verbatim English"</span> <span class="qt-loc">(§4 본문)</span>` 형태로 넣는다. abstract·서론이 아니라 본문(Results·Method·Discussion)에서 발췌한다.
-- **figure**: `python scripts/extract_figures.py papers/<파일>.pdf --prefix <이름>` 으로 그림을 `research/images/`에 뽑은 뒤(벡터 그림이면 `--render-pages`), 그중 **주요 그림들**을 골라 JSON `figures` 에 `{id, src:"images/...", label, caption}` 로 넣는다(여러 개 가능). 본문에서는 `<a class="figref" href="#fig1">Fig. 1</a>` 로 가리킨다. 추출된 크롭이 인접 캡션·다른 패널과 겹쳐 지저분하면 깨끗한 것을 고른다(필요하면 `--render-pages`). 캡션은 그림을 직접 보고 우리 맥락에 맞게 쓴다.
+- **figure**: `python scripts/extract_figures.py papers/<파일>.pdf --prefix <이름>` 으로 그림을 `research/images/`에 뽑은 뒤(벡터 그림이면 `--render-pages`), 그중 **정말 도움 되는 그림 1~3개**만 골라(예: 구조도 + 핵심 결과) JSON `figures` 에 `{id, src:"images/...", label, caption}` 로 넣는다. 억지로 여러 개 채우지 말고, 하나로 충분하면 하나만 넣는다(단독 그림은 카드에서 가운데 정렬됨). 본문에서는 `<a class="figref" href="#fig1">Fig. 1</a>` 로 가리킨다. 추출된 크롭이 인접 캡션·다른 패널과 겹쳐 지저분하면 깨끗한 것을 고른다(필요하면 `--render-pages`). 캡션은 그림을 직접 보고 우리 맥락에 맞게 쓴다.
 - **tldr(한눈에)·tags·role** 도 채우면 카드가 풍부해진다.
 
 ## 원칙

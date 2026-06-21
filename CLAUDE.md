@@ -21,7 +21,7 @@
 1. 주제/검색어 정리 → 세 경로로 탐색
    - **arXiv·웹**: `scripts/fetch_arxiv.py` (무료 본문)
    - **OpenAlex**: `scripts/fetch_openalex.py` (무료, 키 불필요. 인용 그래프로 관련 논문 확장 + 무료 PDF 위치 탐지)
-   - **LeapSpace (사람 개입)**: API가 없다. ≤500자 영어 질문을 만들어 사용자에게 주고, 사용자가 LeapSpace에서 받아온 답변(인용·DOI 포함)을 붙여넣으면 거기서 DOI를 추출한다.
+   - **LeapSpace (사람 개입)**: API가 없다. ≤500자 영어 질문을 만들어 사용자에게 주고, 사용자가 LeapSpace(https://www.sciencedirect.com/leapspace)에서 받아온 답변(인용·DOI 포함)을 붙여넣으면 거기서 DOI를 추출한다.
 2. DOI 모으기 → 출처별로 본문 수집 (서브에이전트 `librarian`에 위임 가능)
    - 무료 공개본(OA) → 바로 받기
    - Elsevier·Wiley → `scripts/fetch_doi.py` (KAIST API 키)

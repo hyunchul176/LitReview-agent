@@ -64,5 +64,7 @@ claude
 - 같은 논문이 여러 경로로 들어와도 DOI 기준으로 자동 정리됩니다.
 - 기관 라이선스 약관을 지켜, 짧은 시간에 과도하게 받지 않습니다.
 
-## 상태: 골격(skeleton)
-현재는 구조만 잡힌 상태입니다. `scripts/`는 아직 빈 껍데기이며, `fetch_openalex.py`(무료·키 불필요)부터 채워 나가는 것을 권합니다.
+## 상태
+검색·수집·리뷰 카드·figure 추출·현황 대시보드까지 구현되어 있습니다.
+- `scripts/`: `fetch_openalex` · `fetch_arxiv` · `fetch_doi` · `fetch_ieee_playwright` · `extract_figures` · `make_card` · `build_dashboard`
+- arXiv·OpenAlex는 무료·키 불필요. IEEE·Elsevier·Wiley 실제 다운로드는 KAIST 망 또는 기관 인증이 필요합니다.
