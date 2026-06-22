@@ -65,12 +65,13 @@ def main():
                 title = f'<a href="{esc(p["url"])}" target="_blank" rel="noopener">{title}</a>'
             meta = " · ".join(esc(x) for x in [p.get("authors"), p.get("year"), p.get("venue"), p.get("source"), p.get("id")] if x)
             tag = '<span class="extag">제외 추천</span>' if ex else ""
-            note = f'<span class="rnote">{esc(p.get("note"))}</span>' if p.get("note") else ""
+            summary = f'<span class="rsum"><b>내용</b> {esc(p.get("summary"))}</span>' if p.get("summary") else ""
+            note = f'<span class="rnote"><b>판단</b> {esc(p.get("note"))}</span>' if p.get("note") else ""
             items.append(
                 f'<label class="row{" ex" if ex else ""}">'
                 f'<input type="checkbox" class="cb" data-id="{pid}"{"" if ex else " checked"}>'
                 f'<span class="rmain"><span class="rtitle">{title}{tag}</span>'
-                f'<span class="rmeta">{meta}</span>{note}</span></label>'
+                f'<span class="rmeta">{meta}</span>{summary}{note}</span></label>'
             )
         rows.append(f'<section class="cat"><h2>{esc(c.get("name"))} <span class="n">{len(c.get("papers", []))}</span></h2>{"".join(items)}</section>')
 
@@ -104,7 +105,10 @@ def main():
   .rtitle a:hover{{color:var(--acc);}}
   .extag{{font-size:.68rem;font-weight:800;color:var(--red);background:var(--redbg);border:1px solid #e7c9c5;border-radius:5px;padding:.05rem .4rem;margin-left:.45rem;vertical-align:middle;}}
   .rmeta{{display:block;font-size:.8rem;color:var(--faint);margin-top:.15rem;}}
-  .rnote{{display:block;font-size:.86rem;color:var(--soft);margin-top:.25rem;}}
+  .rsum{{display:block;font-size:.88rem;color:var(--ink);margin-top:.35rem;line-height:1.55;}}
+  .rnote{{display:block;font-size:.86rem;color:var(--soft);margin-top:.3rem;font-style:italic;}}
+  .rsum b,.rnote b{{display:inline-block;font-style:normal;font-size:.66rem;font-weight:800;letter-spacing:.04em;color:#fff;background:var(--acc);border-radius:4px;padding:.05rem .35rem;margin-right:.4rem;vertical-align:middle;}}
+  .rnote b{{background:var(--faint);}}
   textarea#out{{width:100%;height:90px;margin-top:.7rem;border:1px solid var(--line);border-radius:8px;padding:.6rem;font:13px/1.5 ui-monospace,Consolas,monospace;display:none;}}
   .toast{{font-size:.85rem;color:var(--acc);font-weight:700;}}
 </style>
@@ -132,9 +136,15 @@ def main():
   function all(v){{cbs().forEach(function(c){{c.checked=v;}});upd();}}
   function copySel(){{
     var ids=cbs().filter(function(c){{return c.checked;}}).map(function(c){{return c.dataset.id;}}).filter(Boolean);
-    var ta=document.getElementById('out');ta.style.display='block';ta.value=ids.join('\\n');ta.select();
-    try{{navigator.clipboard.writeText(ids.join('\\n'));}}catch(e){{try{{document.execCommand('copy');}}catch(e2){{}}}}
-    document.getElementById('toast').textContent=ids.length+'편 복사됨 — 에이전트에 붙여넣으세요';
+    var text=ids.join('\\n');
+    var ta=document.getElementById('out');ta.style.display='block';ta.value=text;ta.focus();ta.select();
+    try{{ta.setSelectionRange(0,text.length);}}catch(e){{}}
+    var toast=document.getElementById('toast');
+    var ok=function(){{toast.textContent=ids.length+'편 복사됨 — 에이전트에 붙여넣으세요';}};
+    var manual=function(){{toast.textContent=ids.length+'편 선택됨 — 아래 칸을 Ctrl+C로 복사하세요';}};
+    var did=false; try{{did=document.execCommand('copy');}}catch(e){{}}
+    if(navigator.clipboard&&navigator.clipboard.writeText){{navigator.clipboard.writeText(text).then(ok,function(){{if(did){{ok();}}else{{manual();}}}});}}
+    else{{if(did){{ok();}}else{{manual();}}}}
   }}
   document.addEventListener('change',function(e){{if(e.target.classList.contains('cb'))upd();}});
   upd();

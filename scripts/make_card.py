@@ -229,7 +229,7 @@ def main():
         src = f.get("src") or ""
         if src and not src.startswith("http") and not (out.parent / src).exists():
             warns.append("그림 파일 없음: " + src)
-    if out_html.count('class="qt"') == 0:
+    if 'class="qt"' not in out_html and "class='qt'" not in out_html:
         warns.append("본문 인용(.qt) 없음 — 핵심 문장 1개 권장")
 
     print(f"리뷰 카드 생성: {out}")
