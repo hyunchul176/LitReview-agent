@@ -22,12 +22,14 @@
    - **arXiv·웹**: `scripts/fetch_arxiv.py` (무료 본문)
    - **OpenAlex**: `scripts/fetch_openalex.py` (무료, 키 불필요. 인용 그래프로 관련 논문 확장 + 무료 PDF 위치 탐지)
    - **LeapSpace (사람 개입)**: API가 없다. ≤500자 영어 질문을 만들어 사용자에게 주고, 사용자가 LeapSpace(https://www.sciencedirect.com/leapspace)에서 받아온 답변(인용·DOI 포함)을 붙여넣으면 거기서 DOI를 추출한다.
+
+> **★ 후보 선별 게이트 (수집·정독 전에 반드시):** 검색 결과를 곧장 수집/정독하지 말 것. 후보를 **분야별로 분류**하고 관련성 낮은 것(엉뚱한 보고서·무관한 서베이 등)엔 **"제외 추천"**을 달아, `scripts/make_shortlist.py`(JSON 입력)로 `research/shortlist.html`(체크박스 + "선택 복사")을 만들어 사용자에게 보여준다. **사용자가 확인·취사선택해 돌려준 논문만** 아래 2~4단계로 넘긴다.
 2. DOI 모으기 → 출처별로 본문 수집 (서브에이전트 `librarian`에 위임 가능)
    - 무료 공개본(OA) → 바로 받기
    - Elsevier·Wiley → `scripts/fetch_doi.py` (KAIST API 키)
    - IEEE 등 키 없는 곳 → `scripts/fetch_ieee_playwright.py` (사용자 브라우저 로그인)
 3. 받은 PDF는 `papers/`에 저장, `library.json`에 등록한다 (DOI 또는 arXiv id 기준으로 중복 제거).
-4. 정독이 필요하면 논문 한 편씩 서브에이전트 `reader`에 위임 → `research/`에 리뷰 카드(HTML)를 만든다.
+4. 정독이 필요하면 논문 한 편씩 서브에이전트 `reader`에 위임 → `research/`에 리뷰 카드(HTML)를 만든다. **같은 주제의 카드들은 `scripts/make_topic_page.py`로 한 페이지에 모은다**(사이드바 TOC). 주제가 완전히 다르면 토픽을 나눠 각각 페이지로 만들고, 대시보드에서 카테고리로 진입하게 한다.
 5. 여러 편을 종합하거나 연구 틈(gap)을 찾을 땐 서브에이전트 `synthesizer`에 위임한다.
 
 ## 서브에이전트(전문 기사) — 필요할 때만
