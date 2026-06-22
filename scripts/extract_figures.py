@@ -79,9 +79,11 @@ def by_caption(doc, prefix, out_dir, dpi, band_frac, pad):
                         and r.height > 8 and r.width > 20):
                     union = r if union is None else (union | r)
             if union is None:
-                clip = fitz.Rect(x0, top_limit, x1, cb.y0)        # 그림 블록 없음 → 캡션 위 밴드
+                clip = fitz.Rect(x0, top_limit, x1, cb.y1)        # 그림 블록 없음 → 캡션 위 밴드
             else:
-                clip = fitz.Rect(union.x0 - pad, union.y0 - pad, union.x1 + pad, cb.y1)
+                cx0 = min(union.x0, cb.x0) - pad   # 그림과 캡션 둘 다 포함 (캡션 오른쪽 잘림 방지)
+                cx1 = max(union.x1, cb.x1) + pad
+                clip = fitz.Rect(cx0, union.y0 - pad, cx1, cb.y1)
             clip = clip & page.rect
             if clip.width < 40 or clip.height < 40:
                 continue
