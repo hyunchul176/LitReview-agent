@@ -106,30 +106,31 @@ def do_fetch(target, headless=False):
         ctx.on("response", on_response)
         try:
             page.goto(_article_url(target), wait_until="domcontentloaded", timeout=60000)
-            page.wait_for_timeout(4000)
-            # IEEE: 문서번호(arnumber)로 stamp 뷰어를 직접 열면 PDF가 로드된다
+            page.wait_for_timeout(3000)
             m = re.search(r"/document/(\d+)", page.url)
-            if m and not saved:
-                stamp = f"https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber={m.group(1)}"
+            if m:
+                arn = m.group(1)
+                stamp = f"https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber={arn}"
                 page.goto(stamp, wait_until="domcontentloaded", timeout=60000)
-                page.wait_for_timeout(5000)
-                fr = page.query_selector("iframe")
-                if fr and not saved:
-                    src = fr.get_attribute("src") or ""
-                    if ".pdf" in src.lower():
-                        page.goto(src if src.startswith("http") else "https://ieeexplore.ieee.org" + src,
-                                  wait_until="domcontentloaded", timeout=60000)
-                        page.wait_for_timeout(4000)
-            # 폴백: 기존 PDF 버튼 셀렉터
-            if not saved:
-                link = page.query_selector("a[href*='stamp.jsp'], a[aria-label*='PDF'], a.pdf-btn-link")
-                if link:
-                    href = link.get_attribute("href") or ""
-                    if href:
-                        page.goto(href if href.startswith("http") else f"https://ieeexplore.ieee.org{href}",
-                                  wait_until="domcontentloaded", timeout=60000)
-                        page.wait_for_timeout(4000)
-            page.wait_for_timeout(2000)
+                page.wait_for_timeout(3000)
+                if not saved:
+                    # stamp 뷰어가 embed 한 PDF(getPDF.jsp) 주소를 찾아, 인증된 컨텍스트로 직접 받는다
+                    pdf_url = ""
+                    fr = page.query_selector("iframe, embed")
+                    if fr:
+                        src = fr.get_attribute("src") or ""
+                        pdf_url = src if src.startswith("http") else (("https://ieeexplore.ieee.org" + src) if src else "")
+                    if not pdf_url:
+                        pdf_url = f"https://ieeexplore.ieee.org/stampPDF/getPDF.jsp?tp=&arnumber={arn}&ref="
+                    try:
+                        r = ctx.request.get(pdf_url, headers={"Referer": stamp})
+                        body = r.body()
+                        if r.ok and body[:4] == b"%PDF":
+                            out.write_bytes(body)
+                            saved["size"] = len(body)
+                    except Exception as ex:
+                        print(f"  · 직접 다운로드 실패: {ex}", file=sys.stderr)
+            page.wait_for_timeout(1500)
         except Exception as ex:
             print(f"  · 탐색 중 오류: {ex}", file=sys.stderr)
         finally:
